@@ -6,6 +6,7 @@ import net.ostis.jesc.client.model.type.ScType
 import net.ostis.jesc.context.ScContext
 import net.ostis.jesc.context.ScContextCommon
 import ostis.legislation.WitAISCQueryCreator
+import ostis.legislation.agent.FirstLetterSearchAgent
 import ostis.legislation.agent.TelegramSendAnswerAgent
 import ostis.legislation.agent.WhatIsAgent
 import ostis.legislation.thirdparty.telegram.Telegram
@@ -33,16 +34,24 @@ fun main() {
     val context = prepareContext()
     val agentRegistry = ScAgentRegistry(context.api.client)
 
-    val question = context.resolveBySystemIdentifier("question_natural_lang", ScType.NODE_CONST_CLASS)
-    val answer = context.resolveBySystemIdentifier("rrel_answer_natural_lang", ScType.NODE_CONST_ROLE)
+    val questionNaturalLang = context.resolveBySystemIdentifier("question_natural_lang", ScType.NODE_CONST_CLASS)
+    val answerNaturalLang = context.resolveBySystemIdentifier("rrel_answer_natural_lang", ScType.NODE_CONST_ROLE)
 
-    val newQuestionEvent = context.createEvent(ScEventType.ADD_OUTGOING_EDGE, question)
-    val resultReadyEvent = context.createEvent(ScEventType.ADD_OUTGOING_EDGE, answer)
+    val firstLetterSearchAgentQuestion = context.resolveBySystemIdentifier(
+            "qustion_jesc_search_by_first_letter",
+            ScType.NODE_CLASS
+    )
+
+    val newQuestionEvent = context.createEvent(ScEventType.ADD_OUTGOING_EDGE, questionNaturalLang)
+    val resultReadyEvent = context.createEvent(ScEventType.ADD_OUTGOING_EDGE, answerNaturalLang)
+
+    val firstLetterSearchAgentEvent = context.createEvent(ScEventType.ADD_OUTGOING_EDGE, firstLetterSearchAgentQuestion)
 
     val telegram = prepareTelegram(context, witAI)
 
     agentRegistry.registerAgent(WhatIsAgent(newQuestionEvent, context.api.client))
     agentRegistry.registerAgent(TelegramSendAnswerAgent(telegram, resultReadyEvent, context.api.client))
+    agentRegistry.registerAgent(FirstLetterSearchAgent(firstLetterSearchAgentEvent, context.api.client))
 
     Runtime.getRuntime().addShutdownHook(Thread {
         println("Shutting down JESC agents.")
